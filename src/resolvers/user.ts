@@ -1,6 +1,6 @@
 import { User } from '../entities/User';
 import { MyContext } from 'src/types';
-import { Resolver, Ctx, Mutation, InputType, Field, Arg } from 'type-graphql';
+import { Resolver, Ctx, Mutation, InputType, Field, Arg, Query } from 'type-graphql';
 import argon2 from 'argon2';
 
 @InputType()
@@ -26,4 +26,10 @@ export class UserResolver {
     await em.persistAndFlush(user);
     return user;
   }
+
+  @Query(() => [User])
+  async users (@Ctx() ctx: MyContext): Promise<User[]> {
+      return ctx.em.find(User, {})
+  }
+
 }
