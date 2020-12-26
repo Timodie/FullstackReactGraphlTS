@@ -13,7 +13,7 @@ const main = async () => {
   try {
     await orm.getMigrator().up();
   } catch (error) {
-    console.log(error);
+    // console.log(error);
   }
 
   const app = express();
@@ -27,7 +27,7 @@ const main = async () => {
   });
   apolloServer.applyMiddleware({ app });
   app.listen(4000, () => {
-    console.log('server started on localhost:4000');
+    console.log('GraphQL server started on localhost:4000');
   });
 };
 
