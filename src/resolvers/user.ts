@@ -97,7 +97,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async login(
     @Arg('options') options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     const user = await em.findOne(User, {
       username: options.username.toLocaleLowerCase()
@@ -123,8 +123,18 @@ export class UserResolver {
         ]
       };
     }
+    req.session.userId = user.id;
     return {
       user
     };
+  }
+
+  @Query(() => User, { nullable: true })
+  async me(@Ctx() { req, em }: MyContext) {
+    if (!req.session.userId) {
+      return null;
+    }
+    const user = await em.findOne(User, { id: req.session.userId });
+    return user;
   }
 }
