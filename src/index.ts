@@ -12,6 +12,7 @@ import session from 'express-session';
 import connectRedis from 'connect-redis';
 import { __prod__ } from './constants';
 import { MyContext } from './types';
+import cors  from 'cors'
 
 const main = async () => {
   const orm = await MikroORM.init(microConfig);
@@ -23,6 +24,11 @@ const main = async () => {
 
   const app = express();
 
+  app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+  );
   const RedisStore = connectRedis(session);
   const redisClient = redis.createClient();
   // session middleware should init before apollo because we'll use it in apollo
@@ -62,7 +68,7 @@ const main = async () => {
   });
   apolloServer.applyMiddleware({
     app,
-    cors: { origin: 'http://localhost:3000' } // Access-Control-Allow-Origin must not be wildcard * ,
+    cors: false // Access-Control-Allow-Origin must not be wildcard * ,
   });
   app.listen(4000, () => {
     console.log('GraphQL server started on localhost:4000');
