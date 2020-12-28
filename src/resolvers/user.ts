@@ -11,6 +11,7 @@ import {
   ObjectType
 } from 'type-graphql';
 import argon2 from 'argon2';
+import { EntityManager } from '@mikro-orm/postgresql';
 
 @InputType() // arguments object
 class UsernamePasswordInput {
@@ -43,7 +44,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async register(
     @Arg('options', () => UsernamePasswordInput) options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     if (options.username.length <= 2) {
       return {
@@ -55,7 +56,7 @@ export class UserResolver {
         ]
       };
     }
-    if (options.username.length <= 3) {
+    if (options.password.length <= 3) {
       return {
         errors: [
           {
@@ -66,16 +67,27 @@ export class UserResolver {
       };
     }
     const hashedPassword = await argon2.hash(options.password);
-    const user = em.create(User, {
-      username: options.username,
-      password: hashedPassword
-    });
+    let user;
     try {
-      await em.persistAndFlush(user);
+      const result = await (em as EntityManager)
+        .createQueryBuilder(User)
+        .getKnexQuery()
+        .insert({
+          username: options.username,
+          password: hashedPassword,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+        .returning('*');
+      user = result[0];
+      // TODO: find cleaner way of casting result to User entity
+      user.updatedAt = result[0].updated_at;
+      user.createdAt = result[0].created_at;
+      console.log('LOGGING USER', user);
     } catch (err) {
       console.log(err);
 
-      if (err.code === '23505' || err.detail.includes('already exists')) {
+      if (err.code === '23505' || err.detail?.includes('already exists')) {
         return {
           errors: [
             {
@@ -86,6 +98,9 @@ export class UserResolver {
         };
       }
     }
+    // store user id in session
+    // set cookie on the user session to keep them logged in
+    req.session.userId = user.id;
     return { user };
   }
 
@@ -131,6 +146,7 @@ export class UserResolver {
 
   @Query(() => User, { nullable: true })
   async me(@Ctx() { req, em }: MyContext) {
+    // loggedIn?
     if (!req.session.userId) {
       return null;
     }
@@ -138,3 +154,5 @@ export class UserResolver {
     return user;
   }
 }
+
+// TODO : Create log out
